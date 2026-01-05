@@ -3,7 +3,7 @@ import pandas as pd
 import datetime
 import os
 
-# 1. KURUMSAL KİMLİK AYARLARI (SEKME BAŞLIĞI)
+# 1. KURUMSAL KİMLİK VE SAYFA AYARLARI
 st.set_page_config(
     page_title="Maintor | Dijital Bakım Sistemi", 
     page_icon="⚙️", 
@@ -37,7 +37,6 @@ def login_ekrani():
         kullanici = st.text_input("Yönetici Kimliği")
         sifre = st.text_input("Giriş Şifresi", type="password")
         if st.button("SİSTEME GİRİŞ YAP", use_container_width=True):
-            # Şifreyi buradan istediğin gibi güncelle
             if kullanici == "admin" and sifre == "maintor2024":
                 st.session_state.authenticated = True
                 st.rerun()
@@ -63,22 +62,20 @@ else:
         st.session_state.authenticated = False
         st.rerun()
 
-    # MODÜL 1: DASHBOARD (ÖZET EKRANI)
+    # MODÜL 1: DASHBOARD
     if menu == "📊 Dashboard":
         st.title("📈 Maintor Analiz Paneli")
         if st.session_state.is_emirleri:
             df = pd.DataFrame(st.session_state.is_emirleri)
-            
             m1, m2, m3 = st.columns(3)
             m1.metric("Toplam İş Emri", len(df))
             m2.metric("Toplam Bakım Gideri", f"{df['Maliyet'].sum()} ₺")
             m3.metric("Aktif Arızalar", len(df[df['Durum'] == 'Açık']))
-            
             st.divider()
             st.subheader("Makine Arıza Yoğunluğu")
             st.bar_chart(df['Makine'].value_counts())
         else:
-            st.info("Sistemde henüz kayıtlı veri bulunmuyor. Lütfen yeni arıza bildirimi yapın.")
+            st.info("Sistemde henüz kayıtlı veri bulunmuyor.")
 
     # MODÜL 2: YENİ KAYIT
     elif menu == "🔧 Yeni Arıza Bildirimi":
@@ -86,22 +83,29 @@ else:
         with st.form("maintor_form"):
             col_a, col_b = st.columns(2)
             with col_a:
-                makine = st.selectbox("Arızalı Makine / Hat", ["Pres-01", "CNC-Yatay", "Robot Kol-A", "Paketleme Hattı", "Kompresör"])
-                oncelik = st.selectbox("Kritiklik Seviyesi", ["Düşük", "Normal", "Yüksek", "⚠️ ACİL"])
+                makine = st.selectbox("Arızalı Makine", ["Pres-01", "CNC-Yatay", "Robot Kol-A", "Paketleme Hattı", "Kompresör"])
+                oncelik = st.selectbox("Kritiklik", ["Düşük", "Normal", "Yüksek", "⚠️ ACİL"])
             with col_b:
-                maliyet = st.number_input("Tahmini Onarım Maliyeti (₺)", min_value=0)
-                durum = st.selectbox("İş Emri Durumu", ["Açık", "Beklemede", "Tamamlandı"])
-            
-            detay = st.text_area("Arıza Detayı ve Yapılan İşlem")
-            
+                maliyet = st.number_input("Tahmini Maliyet (₺)", min_value=0)
+                durum = st.selectbox("Durum", ["Açık", "Beklemede", "Tamamlandı"])
+            detay = st.text_area("Arıza Detayı")
             if st.form_submit_button("KAYDI TAMAMLA"):
-                yeni_kayit = {
+                yeni = {
                     "Tarih": datetime.datetime.now().strftime("%d.%m.%Y %H:%M"),
-                    "Makine": makine,
-                    "Oncelik": oncelik,
-                    "Maliyet": maliyet,
-                    "Detay": detay,
-                    "Durum": durum
+                    "Makine": makine, "Oncelik": oncelik, "Maliyet": maliyet, "Detay": detay, "Durum": durum
                 }
-                st.session_state.is_emirleri.append(yeni_kayit)
-                verileri_kaydet(
+                st.session_state.is_emirleri.append(yeni)
+                verileri_kaydet(st.session_state.is_emirleri)
+                st.success("İş emri MAINTOR'a eklendi!")
+                st.balloons()
+
+    # MODÜL 3: KAYIT LİSTESİ
+    elif menu == "📂 Bakım Kayıtları":
+        st.title("📋 Tüm Bakım Geçmişi")
+        if st.session_state.is_emirleri:
+            df = pd.DataFrame(st.session_state.is_emirleri)
+            st.dataframe(df, use_container_width=True)
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button(label="📥 Verileri Excel Olarak İndir", data=csv, file_name="maintor_rapor.csv", mime="text/csv")
+        else:
+            st.warning("Kayıt bulunamadı.")

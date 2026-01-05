@@ -3,11 +3,15 @@ import pandas as pd
 import datetime
 import os
 
-# 1. SAYFA VE MARKA AYARLARI (MAINTOR)
-st.set_page_config(page_title="Maintor | Akıllı Bakım", page_icon="🛠️", layout="wide")
+# 1. KURUMSAL KİMLİK AYARLARI (SEKME BAŞLIĞI)
+st.set_page_config(
+    page_title="Maintor | Dijital Bakım Sistemi", 
+    page_icon="⚙️", 
+    layout="wide"
+)
 
-# 2. VERİ TABANI SİSTEMİ (Excel Dosyası)
-DATA_FILE = "maintor_verileri.csv"
+# 2. VERİ DOSYASI YÖNETİMİ
+DATA_FILE = "maintor_veritabani.csv"
 
 def verileri_yukle():
     if os.path.exists(DATA_FILE):
@@ -17,88 +21,87 @@ def verileri_yukle():
 def verileri_kaydet(liste):
     pd.DataFrame(liste).to_csv(DATA_FILE, index=False)
 
-# Hafızayı kontrol et
 if 'is_emirleri' not in st.session_state:
     st.session_state.is_emirleri = verileri_yukle()
 
-# 3. GÜVENLİK (GİRİŞ EKRANI)
+# 3. GÜVENLİK (MAINTOR GİRİŞ PANELİ)
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 def login_ekrani():
-    st.container()
-    col1, col2, col3 = st.columns([1,2,1])
+    col1, col2, col3 = st.columns([1,1.5,1])
     with col2:
-        st.title("🚀 MAINTOR")
-        st.subheader("Dijital Bakım Yönetim Paneli")
-        kullanici = st.text_input("Yönetici Adı")
-        sifre = st.text_input("Şifre", type="password")
-        if st.button("Sisteme Giriş"):
+        st.markdown("<h1 style='text-align: center; color: #007BFF;'>🚀 MAINTOR</h1>", unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center;'>Akıllı Fabrika Yönetim Sistemi</h4>", unsafe_allow_html=True)
+        st.write("---")
+        kullanici = st.text_input("Yönetici Kimliği")
+        sifre = st.text_input("Giriş Şifresi", type="password")
+        if st.button("SİSTEME GİRİŞ YAP", use_container_width=True):
+            # Şifreyi buradan istediğin gibi güncelle
             if kullanici == "admin" and sifre == "maintor2024":
                 st.session_state.authenticated = True
                 st.rerun()
             else:
-                st.error("Hatalı kullanıcı adı veya şifre!")
+                st.error("Giriş başarısız! Lütfen bilgilerinizi kontrol edin.")
 
-# 4. ANA PROGRAM (EĞER GİRİŞ YAPILDIYSA)
+# 4. ANA PROGRAM PANELİ
 if not st.session_state.authenticated:
     login_ekrani()
 else:
-    # Sol Menü
-    st.sidebar.title("🛠️ MAINTOR v1.0")
-    st.sidebar.write(f"Kullanıcı: Admin")
-    menu = st.sidebar.radio("Menü", ["📊 Genel Durum", "➕ Yeni Arıza Kaydı", "📋 Arıza Listesi"])
+    # Sol Menü (SideBar)
+    st.sidebar.markdown("<h2 style='color: #007BFF;'>⚙️ MAINTOR</h2>", unsafe_allow_html=True)
+    st.sidebar.write(f"**Yetkili:** Admin")
+    st.sidebar.markdown("---")
     
+    menu = st.sidebar.radio(
+        "YÖNETİM MENÜSÜ", 
+        ["📊 Dashboard", "🔧 Yeni Arıza Bildirimi", "📂 Bakım Kayıtları"]
+    )
+    
+    st.sidebar.markdown("---")
     if st.sidebar.button("Güvenli Çıkış"):
         st.session_state.authenticated = False
         st.rerun()
 
-    # MODÜL 1: DASHBOARD
-    if menu == "📊 Genel Durum":
-        st.title("Fabrika Genel Analizi")
+    # MODÜL 1: DASHBOARD (ÖZET EKRANI)
+    if menu == "📊 Dashboard":
+        st.title("📈 Maintor Analiz Paneli")
         if st.session_state.is_emirleri:
             df = pd.DataFrame(st.session_state.is_emirleri)
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Toplam İş Emri", len(df))
-            c2.metric("Toplam Bakım Maliyeti", f"{df['Maliyet'].sum()} TL")
-            c3.metric("Aktif Arıza", len(df[df['Durum'] == 'Açık']))
+            
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Toplam İş Emri", len(df))
+            m2.metric("Toplam Bakım Gideri", f"{df['Maliyet'].sum()} ₺")
+            m3.metric("Aktif Arızalar", len(df[df['Durum'] == 'Açık']))
+            
             st.divider()
-            st.write("### Makine Bazlı Arıza Dağılımı")
+            st.subheader("Makine Arıza Yoğunluğu")
             st.bar_chart(df['Makine'].value_counts())
         else:
-            st.info("Henüz veri girişi yapılmadı.")
+            st.info("Sistemde henüz kayıtlı veri bulunmuyor. Lütfen yeni arıza bildirimi yapın.")
 
     # MODÜL 2: YENİ KAYIT
-    elif menu == "➕ Yeni Arıza Kaydı":
-        st.title("Yeni Arıza Bildirimi")
-        with st.form("yeni_kayit_formu"):
-            makine = st.selectbox("Makine Seçin", ["Pres 01", "CNC 02", "Robot 03", "Konveyör A"])
-            oncelik = st.select_slider("Kritiklik", ["Düşük", "Normal", "Yüksek", "ACİL"])
-            maliyet = st.number_input("Tahmini Maliyet (TL)", min_value=0)
-            detay = st.text_area("Arıza Açıklaması")
+    elif menu == "🔧 Yeni Arıza Bildirimi":
+        st.title("📝 Yeni Kayıt Oluştur")
+        with st.form("maintor_form"):
+            col_a, col_b = st.columns(2)
+            with col_a:
+                makine = st.selectbox("Arızalı Makine / Hat", ["Pres-01", "CNC-Yatay", "Robot Kol-A", "Paketleme Hattı", "Kompresör"])
+                oncelik = st.selectbox("Kritiklik Seviyesi", ["Düşük", "Normal", "Yüksek", "⚠️ ACİL"])
+            with col_b:
+                maliyet = st.number_input("Tahmini Onarım Maliyeti (₺)", min_value=0)
+                durum = st.selectbox("İş Emri Durumu", ["Açık", "Beklemede", "Tamamlandı"])
             
-            if st.form_submit_button("Sisteme Kaydet"):
-                yeni = {
-                    "Tarih": datetime.datetime.now().strftime("%d-%m-%Y %H:%M"),
+            detay = st.text_area("Arıza Detayı ve Yapılan İşlem")
+            
+            if st.form_submit_button("KAYDI TAMAMLA"):
+                yeni_kayit = {
+                    "Tarih": datetime.datetime.now().strftime("%d.%m.%Y %H:%M"),
                     "Makine": makine,
                     "Oncelik": oncelik,
                     "Maliyet": maliyet,
                     "Detay": detay,
-                    "Durum": "Açık"
+                    "Durum": durum
                 }
-                st.session_state.is_emirleri.append(yeni)
-                verileri_kaydet(st.session_state.is_emirleri)
-                st.success("Arıza başarıyla Maintor'a kaydedildi!")
-
-    # MODÜL 3: LİSTELEME
-    elif menu == "📋 Arıza Listesi":
-        st.title("Tüm Kayıtlar")
-        if st.session_state.is_emirleri:
-            df = pd.DataFrame(st.session_state.is_emirleri)
-            st.dataframe(df, use_container_width=True)
-            if st.button("Listeyi Sıfırla (Dikkat!)"):
-                st.session_state.is_emirleri = []
-                if os.path.exists(DATA_FILE): os.remove(DATA_FILE)
-                st.rerun()
-        else:
-            st.write("Gösterilecek veri yok.")
+                st.session_state.is_emirleri.append(yeni_kayit)
+                verileri_kaydet(

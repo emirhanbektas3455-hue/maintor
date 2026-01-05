@@ -4,7 +4,7 @@ import datetime
 import os
 
 # --- SAYFA AYARLARI ---
-st.set_page_config(page_title="Maintor PRO | Dashboard", layout="wide", page_icon="📊")
+st.set_page_config(page_title="Maintor PRO", layout="wide", page_icon="⚙️")
 
 # --- VERİ YÖNETİMİ ---
 DATA_FILE = "maintor_data.csv"
@@ -26,147 +26,131 @@ if 'machines' not in st.session_state: st.session_state.machines = load_data(MAC
 if "auth" not in st.session_state: st.session_state.auth = None
 
 if not st.session_state.auth:
-    st.title("🚀 MAINTOR PRO")
+    st.title("🚀 MAINTOR PRO GİRİŞ")
     u = st.text_input("Kullanıcı Adı")
     p = st.text_input("Şifre", type="password")
-    if st.button("Giriş"):
+    if st.button("Sisteme Giriş"):
         user_match = next((x for x in st.session_state.users if x['user'] == u and str(x['pass']) == p), None)
         if user_match:
             st.session_state.auth = user_match
             st.rerun()
-        else: st.error("Hatalı bilgiler!")
+        else: st.error("Hatalı kullanıcı bilgileri!")
 else:
     role = st.session_state.auth['role']
     name = st.session_state.auth['user']
-    
     st.sidebar.title("⚙️ MAINTOR")
-    st.sidebar.write(f"Rol: {role}")
-    
+    st.sidebar.write(f"Kullanıcı: **{name}**")
+    st.sidebar.write(f"Yetki: **{role}**")
+
     # Menüler
     if role == "Admin":
-        menu = st.sidebar.radio("Yönetim", ["📊 Dashboard", "🏭 Makine Yönetimi", "👥 Kullanıcılar", "📋 Tüm Kayıtlar"])
+        menu = st.sidebar.radio("Yönetim Paneli", ["📊 Dashboard", "🏭 Makine Yönetimi", "👥 Kullanıcı Yönetimi", "📋 Arıza Arşivi"])
     elif role == "Bakımcı":
-        menu = st.sidebar.radio("Bakım", ["🔧 Açık Arızalar", "📂 Kapatılan İşler"])
+        menu = st.sidebar.radio("Bakım Menüsü", ["🔧 Açık Arızalar", "📂 Geçmiş İşler"])
     else:
-        menu = st.sidebar.radio("Operatör", ["⚠️ Arıza Bildir", "🕒 Taleplerim"])
+        menu = st.sidebar.radio("Operatör Menüsü", ["⚠️ Arıza Bildir", "🕒 Taleplerim"])
 
-    if st.sidebar.button("Çıkış Yap"):
+    if st.sidebar.button("Güvenli Çıkış"):
         st.session_state.auth = None
         st.rerun()
 
-    # --- DASHBOARD (RENKLİ KARTLAR SİSTEMİ) ---
+    # --- DASHBOARD (GÜNCELLENDİ: MALİYET KALDIRILDI) ---
     if menu == "📊 Dashboard":
-        st.title("📈 Fabrika Durum Paneli")
-        
+        st.header("📊 Fabrika Genel Durumu")
         df = pd.DataFrame(st.session_state.tasks)
-        
         if not df.empty:
-            # Durumlara Göre Sayılar
-            toplam_is = len(df)
-            acik_is = len(df[df['durum'] == "Açık"])
-            bekleyen_is = len(df[df['durum'] == "Beklemede"])
-            tamamlanan_is = len(df[df['durum'] == "Tamamlandı"])
-            toplam_maliyet = df['maliyet'].sum()
-
-            # --- RENKLİ KARTLAR (CSS İLE) ---
-            c1, c2, c3, c4 = st.columns(4)
-            
+            c1, c2, c3 = st.columns(3)
             with c1:
-                st.markdown(f"""<div style="background-color:#ff4b4b; padding:20px; border-radius:10px; text-align:center;">
-                    <h3 style="color:white; margin:0;">🔴 AÇIK</h3>
-                    <h1 style="color:white; margin:0;">{acik_is}</h1>
-                    <p style="color:white; margin:0;">Müdahale Bekliyor</p>
-                </div>""", unsafe_allow_html=True)
-            
+                st.markdown(f'<div style="background-color:#ff4b4b; padding:20px; border-radius:10px; text-align:center; color:white;"><h3>🔴 AÇIK</h3><h1>{len(df[df["durum"]=="Açık"])}</h1></div>', unsafe_allow_html=True)
             with c2:
-                st.markdown(f"""<div style="background-color:#ffa500; padding:20px; border-radius:10px; text-align:center;">
-                    <h3 style="color:white; margin:0;">🟡 BEKLEYEN</h3>
-                    <h1 style="color:white; margin:0;">{bekleyen_is}</h1>
-                    <p style="color:white; margin:0;">Parça/Onay Bekliyor</p>
-                </div>""", unsafe_allow_html=True)
-
+                st.markdown(f'<div style="background-color:#ffa500; padding:20px; border-radius:10px; text-align:center; color:white;"><h3>🟡 BEKLEYEN</h3><h1>{len(df[df["durum"]=="Beklemede"])}</h1></div>', unsafe_allow_html=True)
             with c3:
-                st.markdown(f"""<div style="background-color:#28a745; padding:20px; border-radius:10px; text-align:center;">
-                    <h3 style="color:white; margin:0;">🟢 BİTEN</h3>
-                    <h1 style="color:white; margin:0;">{tamamlanan_is}</h1>
-                    <p style="color:white; margin:0;">Tamamlanan İşler</p>
-                </div>""", unsafe_allow_html=True)
-
-            with c4:
-                st.markdown(f"""<div style="background-color:#1c83e1; padding:20px; border-radius:10px; text-align:center;">
-                    <h3 style="color:white; margin:0;">💰 MALİYET</h3>
-                    <h1 style="color:white; margin:0;">{int(toplam_maliyet)} ₺</h1>
-                    <p style="color:white; margin:0;">Toplam Harcama</p>
-                </div>""", unsafe_allow_html=True)
-
-            st.write("---")
-            
-            # Alt Grafikler
-            g1, g2 = st.columns(2)
-            with g1:
-                st.subheader("Makine Bazlı Arıza Sayıları")
-                st.bar_chart(df['makine'].value_counts())
-            with g2:
-                st.subheader("İş Emri Dağılımı")
-                st.write(df['durum'].value_counts())
+                st.markdown(f'<div style="background-color:#28a745; padding:20px; border-radius:10px; text-align:center; color:white;"><h3>🟢 TAMAMLANAN</h3><h1>{len(df[df["durum"]=="Tamamlandı"])}</h1></div>', unsafe_allow_html=True)
+            st.divider()
+            st.subheader("Makine Bazlı Arıza Dağılımı")
+            st.bar_chart(df['makine'].value_counts())
         else:
-            st.info("Sistemde henüz hiç veri yok. Operatör ekranından arıza kaydı açarak Dashboard'u canlandırabilirsiniz!")
+            st.info("Henüz kayıtlı arıza bulunmuyor.")
+
+    # --- KULLANICI YÖNETİMİ (TAMİR EDİLDİ) ---
+    elif menu == "👥 Kullanıcı Yönetimi":
+        st.header("👥 Kullanıcı Yönetimi")
+        
+        # Kullanıcı Ekleme Formu
+        with st.expander("➕ Yeni Kullanıcı Ekle"):
+            with st.form("user_add_form"):
+                new_u = st.text_input("Kullanıcı Adı")
+                new_p = st.text_input("Şifre")
+                new_r = st.selectbox("Yetki Rolü", ["Operatör", "Bakımcı", "Admin"])
+                if st.form_submit_button("Kullanıcıyı Kaydet"):
+                    if new_u and new_p:
+                        st.session_state.users.append({"user": new_u, "pass": new_p, "role": new_r})
+                        save_data(USER_FILE, st.session_state.users)
+                        st.success(f"{new_u} sisteme eklendi!")
+                        st.rerun()
+                    else: st.warning("Lütfen tüm alanları doldurun.")
+
+        # Kullanıcı Listeleme ve Silme
+        st.subheader("Mevcut Kullanıcılar")
+        for i, u in enumerate(st.session_state.users):
+            col1, col2, col3 = st.columns([2, 2, 1])
+            col1.write(f"👤 {u['user']}")
+            col2.write(f"🔑 {u['role']}")
+            if u['user'] != "admin": # Ana admin silinemesin
+                if col3.button("Sil", key=f"user_del_{i}"):
+                    st.session_state.users.pop(i)
+                    save_data(USER_FILE, st.session_state.users)
+                    st.rerun()
 
     # --- MAKİNE YÖNETİMİ ---
     elif menu == "🏭 Makine Yönetimi":
-        st.header("Makine Ekle / Sil")
-        with st.form("m_ekle"):
-            m_ad = st.text_input("Makine Adı")
+        st.header("🏭 Makine Yönetimi")
+        with st.form("m_add"):
+            m_name = st.text_input("Yeni Makine Adı")
             if st.form_submit_button("Ekle"):
-                st.session_state.machines.append({"name": m_ad})
+                st.session_state.machines.append({"name": m_name})
                 save_data(MACHINE_FILE, st.session_state.machines)
                 st.rerun()
-        st.write("### Kayıtlı Makineler")
         for i, m in enumerate(st.session_state.machines):
-            c_a, c_b = st.columns([3,1])
-            c_a.write(f"⚙️ {m['name']}")
-            if c_b.button("Sil", key=f"m_{i}"):
+            c1, c2 = st.columns([4,1])
+            c1.write(f"⚙️ {m['name']}")
+            if c2.button("Sil", key=f"m_del_{i}"):
                 st.session_state.machines.pop(i)
                 save_data(MACHINE_FILE, st.session_state.machines)
                 st.rerun()
 
-    # --- OPERATÖR: ARIZA BİLDİR ---
+    # --- OPERATÖR VE BAKIMCI EKRANLARI (MALİYET KALDIRILDI) ---
     elif menu == "⚠️ Arıza Bildir":
-        st.header("Yeni Arıza Kaydı")
-        with st.form("op_f"):
-            m_list = [m['name'] for m in st.session_state.machines]
-            secilen = st.selectbox("Makine", m_list)
-            notu = st.text_area("Arıza Nedir?")
-            if st.form_submit_button("Sisteme Gönder"):
+        st.header("Arıza Bildirimi")
+        with st.form("op_form"):
+            makine = st.selectbox("Makine", [m['name'] for m in st.session_state.machines])
+            detay = st.text_area("Arıza Açıklaması")
+            if st.form_submit_button("Kaydı Aç"):
                 st.session_state.tasks.append({
                     "id": len(st.session_state.tasks)+1, "tarih": datetime.datetime.now().strftime("%d/%m %H:%M"),
-                    "makine": secilen, "arıza": notu, "op": name, "durum": "Açık", "maliyet": 0, "islem": "", "parca": ""
+                    "makine": makine, "arıza": detay, "op": name, "durum": "Açık", "islem": "", "parca": ""
                 })
                 save_data(DATA_FILE, st.session_state.tasks)
-                st.success("Kayıt açıldı!")
+                st.success("Arıza bildirildi!")
 
-    # --- BAKIMCI: ARIZA KAPATMA ---
     elif menu == "🔧 Açık Arızalar":
-        st.header("Müdahale Bekleyenler")
+        st.header("Açık Arıza İşleri")
         isler = [t for t in st.session_state.tasks if t['durum'] != "Tamamlandı"]
         for t in isler:
             with st.expander(f"İŞ #{t['id']} - {t['makine']}"):
-                st.write(f"**Açıklama:** {t['arıza']}")
-                with st.form(f"f_{t['id']}"):
-                    y_durum = st.selectbox("Durum Güncelle", ["Açık", "Beklemede", "Tamamlandı"])
+                st.write(f"**Operatör:** {t['op']} | **Açıklama:** {t['arıza']}")
+                with st.form(f"fix_{t['id']}"):
+                    y_durum = st.selectbox("Durum", ["Açık", "Beklemede", "Tamamlandı"])
                     islem = st.text_area("Yapılan İşlem")
-                    para = st.number_input("Maliyet", min_value=0)
-                    if st.form_submit_button("Kaydet"):
+                    p_kullandim = st.checkbox("Yedek parça kullandım")
+                    p_notu = st.text_input("Hangi parça kullanıldı?")
+                    if st.form_submit_button("Güncelle"):
                         t['durum'] = y_durum
                         t['islem'] = islem
-                        t['maliyet'] = para
+                        t['parca'] = p_notu if p_kullandim else "Kullanılmadı"
                         save_data(DATA_FILE, st.session_state.tasks)
                         st.rerun()
 
-    # --- KULLANICILAR VE TÜM KAYITLAR ---
-    elif menu == "👥 Kullanıcılar":
-        st.write("Admin Paneli - Kullanıcılar")
-        st.table(pd.DataFrame(st.session_state.users))
-    elif menu == "📋 Tüm Kayıtlar":
-        st.write("Veritabanı")
+    elif menu == "📋 Arıza Arşivi" or menu == "📂 Geçmiş İşler":
+        st.header("Arıza Kayıtları")
         st.dataframe(pd.DataFrame(st.session_state.tasks))
